@@ -5,27 +5,23 @@ using UnityEngine;
 public class PlayerMovement : MonoBehaviour
 {
     // Start is called before the first frame update
-    Creature creature;
-
-    public int attackCooldown = 100;
-    private int attackTimer;
-    private CharacterController characterController;    
-    public GunLogic gun;
+    Creature creature;    
+    private CharacterController characterController;
     public Animator animator;
-
+    public Inventory inventory;
+    
     Camera _cam;
     Vector3 targetDir;
     void Start()
     {        
         creature = GetComponent<Creature>();        
     }
-
-    // Update is called once per frame
+    
     private void Update()
     {
         if (!creature.died)
         {
-            MakeShoot();
+            inventory.Manage();            
         }
     }
 
@@ -38,23 +34,11 @@ public class PlayerMovement : MonoBehaviour
             Animate(x, z);
             Vector3 movement = new Vector3(x, 0, z);            
 
-            creature.MoveOn(movement);          
+            creature.MoveOn(movement, 1);            
             
         }        
-    }
-    
-    private void MakeShoot()
-    {
-        --attackTimer;
-        if(Input.GetMouseButtonDown(0))
-        {
-            if(attackTimer <= 0)
-            {
-                gun.Shoot();
-                attackTimer = attackCooldown;
-            }            
-        }
-    }
+    }    
+
     private void Animate(float x, float z)
     {
         if(x != 0 || z != 0)

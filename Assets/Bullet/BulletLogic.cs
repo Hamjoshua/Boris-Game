@@ -16,9 +16,8 @@ public class BulletLogic : MonoBehaviour
         Creature creature = collision.gameObject.GetComponent<Creature>();
         if(creature)
         {
-            creature.TakeDamage(damage);
-            Destroy(gameObject);
+            creature.TakeDamage(damage);            
         }
-       
+        Destroy(gameObject);
     }
 }

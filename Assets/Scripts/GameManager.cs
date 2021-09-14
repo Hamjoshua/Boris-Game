@@ -9,83 +9,142 @@ public class GameManager : MonoBehaviour
     public Transform canvas;
     public Transform playerHouse;
     public Transform enemyPrefab;
+    public Transform treePrefab;
+
     public List<Transform> enemies;
+    public List<Transform> trees;
+
     public Transform spawnPlatform;
     public Transform player;
+
+    public int treeQuantity;
+
     public Text houseHealthText;
     public Text playerHealthText;
 
     public int lenOfWave;
+    private int spawnedEnemies;
 
-    private bool isLose;
-    private bool isWin;
+    [SerializeField] private bool isLose;
+    private (float, float)[][] enemySpawnAreas;
+    private object[] treesSpawnAreas;
+    private (float, float)[] currentDirectionOfEnemySpawn;
+
+    private bool waveIsOver;
     
-    // Start is called before the first frame update
     void Start()
-    {
-        spawnEnemies();
+    {        
+        float middle = spawnPlatform.localScale.x / 2;
+        float indent = middle - (middle / 100 * 10);
+        Debug.Log(indent);
+        (float, float)[] zapad = new (float, float)[] { (-50f, -indent), (50f, -50f) };
+        (float, float)[] sever = new (float, float)[] { (-50f, 50f), (50f, indent) };
+        (float, float)[] vostok = new (float, float)[] { (50f, indent), (50f, -50f) };
+        (float, float)[] ug = new (float, float)[] { (-50f, 50f), (-50f, -indent) };
+        enemySpawnAreas = new (float, float)[][] { zapad, sever, vostok, ug };
     }
 
-    // Update is called once per frame
     void Update()
     {
         removeDiedEnemies();
+        removeDiedTrees();
         DrawToCanvas();
 
-        if (!getEnd())
+        if (isLose)
         {
-            spawnEnemies();
+            SceneManager.LoadScene("Level1");            
         }
         else
         {
-            SceneManager.LoadScene("Level1");
+            ManageWave();            
+            trees = spawnPrefabs(treePrefab, 5, trees);
         }
+
+        getEnd();
     }
 
-    bool getEnd()
+    void getEnd()
     {
         Creature houseCreature = playerHouse.GetComponent<Creature>();
-        if(houseCreature.health < 0)
+        if(houseCreature.died)
         {
-            isLose = true;
-            return true;
-        }
-
-        if(enemies.Count == 0)
-        {
-            isWin = true;
-            return true;
-        }
-        return false;
-    }
-
-    void spawnEnemies()
-    {
-        if(lenOfWave != enemies.Count)
-        {
-            Debug.Log("Try to spawn");
-            for (int i = 0; i < lenOfWave - enemies.Count; i++)
-            {
-                Vector3 enemyPos = getRandomSpawnPos();
-                if(checkForObstacles(enemyPos, enemyPrefab))
-                {
-                    Transform enemy = Instantiate(enemyPrefab, getRandomSpawnPos(), Quaternion.identity);
-                    enemies.Add(enemy);
-                    enemy.GetComponent<ZombieScript>().player = getRandomPurpose();
-                }                
-            }
+            isLose = true;            
         }        
     }
 
-    Vector3 getRandomSpawnPos()
+    void ManageWave()
     {
-        float scalex = spawnPlatform.localScale.x - (spawnPlatform.localScale.x / 100 * 20);
-        float scalez = spawnPlatform.localScale.z - (spawnPlatform.localScale.y / 100 * 20);
+        if(enemies.Count == 0 && !waveIsOver)
+        {
+            spawnedEnemies = 0;
+            waveIsOver = true;
+            lenOfWave += 1;
+            currentDirectionOfEnemySpawn = enemySpawnAreas[Random.Range(0, enemySpawnAreas.Length)];            
+        }
+        else
+        {
+            waveIsOver = false;
+        }
 
-        float x = Random.Range((-scalex / 2), (scalex / 2));
-        float z = Random.Range((-scalez / 2), (scalez / 2));
+        if(spawnedEnemies < lenOfWave)
+        {
+            spawnEnemy();
+        }
+    }
 
-        return new Vector3(x, 0, z);
+    List<Transform> spawnPrefabs(Transform prefab, int limitOfList, List<Transform> prefabList)
+    {        
+        if(limitOfList > prefabList.Count)
+        {            
+            for (int i = 0; i < limitOfList - prefabList.Count; i++)
+            {
+                Vector3 randPos = getRandomSpawnPos(prefab);
+                if(checkForObstacles(randPos, prefab))
+                {
+                    Transform newObject = Instantiate(prefab, randPos, Quaternion.identity);
+                    prefabList.Add(newObject);
+                    if(prefab == enemyPrefab)
+                    {
+                        newObject.GetComponent<ZombieScript>().player = getRandomPurpose();
+                        spawnedEnemies++;
+                    }                    
+                }
+                else
+                {
+                    Debug.Log("Try to spawn");                    
+                }
+            }
+        }
+        return prefabList;
+    }
+    
+    void spawnEnemy()
+    {
+        enemies = spawnPrefabs(enemyPrefab, lenOfWave, enemies);
+    }
+
+
+    Vector3 getRandomSpawnPos(Transform prefab)
+    {
+        float x, z;
+        float y = (spawnPlatform.localScale.y / 2) + spawnPlatform.position.y;
+        if (prefab == enemyPrefab)
+        {
+            (float, float) randomRangeX = currentDirectionOfEnemySpawn[0];
+            (float, float) randomRangeZ = currentDirectionOfEnemySpawn[1];
+            x = Random.Range(randomRangeX.Item1, randomRangeX.Item2);
+            z = Random.Range(randomRangeZ.Item1, randomRangeZ.Item2);
+        }
+        else 
+        {
+            float scalex = spawnPlatform.localScale.x - (spawnPlatform.localScale.x / 100 * 20);
+            float scalez = spawnPlatform.localScale.z - (spawnPlatform.localScale.y / 100 * 20);
+
+            x = Random.Range((-scalex / 2), (scalex / 2));
+            z = Random.Range((-scalez / 2), (scalez / 2));
+        }        
+        
+        return new Vector3(x, y, z);
     }
 
     void DrawToCanvas()
@@ -131,5 +190,22 @@ public class GameManager : MonoBehaviour
             }
         }
         enemies = filtered_enemis;
+    }
+    void removeDiedTrees()
+    {
+        List<Transform> filtered_trees = new List<Transform>();
+        foreach (Transform tree in trees)
+        {
+            if (tree.GetComponent<Creature>().died)
+            {
+                treeQuantity++;
+                Destroy(tree.gameObject);
+            }
+            else
+            {
+                filtered_trees.Add(tree);
+            }
+        }
+        trees = filtered_trees;
     }
 }

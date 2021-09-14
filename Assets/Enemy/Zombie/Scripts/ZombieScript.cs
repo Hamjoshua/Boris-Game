@@ -6,10 +6,8 @@ public class ZombieScript : MonoBehaviour
 {
     public float speed = 10f;
     public int distance;
-    public GunLogic gun;
-    public int attackCooldown = 100;
-    public Animator animator;
-    private int attackTimer;
+    public GunLogic gun;    
+    public Animator animator;    
     Creature creature;
 
     public Transform player;
@@ -36,15 +34,10 @@ public class ZombieScript : MonoBehaviour
     }
 
     void Shoot()
-    {
-        attackTimer--;
-        if(attackTimer < 0)
+    {        
+        if(Vector3.Distance(transform.position, player.position) <= distance)
         {
-            if(Vector3.Distance(transform.position, player.position) <= distance)
-            {
-                gun.Shoot();
-                attackTimer = attackCooldown;
-            }
-        }
+            gun.Shoot();         
+        }        
     }
 }
